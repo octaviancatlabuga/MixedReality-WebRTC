@@ -126,6 +126,9 @@ using PeerConnectionHandle = void*;
 /// Opaque handle to a native DataChannel C++ object.
 using DataChannelHandle = void*;
 
+/// Opaque handle to a native ExternalVideoTrackSource C++ object.
+using ExternalVideoTrackSourceHandle = void*;
+
 /// Callback fired when the peer connection is connected, that is it finished
 /// the JSEP offer/answer exchange successfully.
 using PeerConnectionConnectedCallback = void(MRS_CALL*)(void* user_data);
@@ -491,6 +494,77 @@ struct VideoDeviceConfiguration {
 MRS_API mrsResult MRS_CALL
 mrsPeerConnectionAddLocalVideoTrack(PeerConnectionHandle peerHandle,
                                     VideoDeviceConfiguration config) noexcept;
+
+struct mrsI420FrameView {
+  uint32_t width;
+  uint32_t height;
+  const void* data_y;
+  const void* data_u;
+  const void* data_v;
+  uint32_t stride_y;
+  uint32_t stride_u;
+  uint32_t stride_v;
+};
+
+struct mrsArgb32FrameView {
+  uint32_t width;
+  uint32_t height;
+  const void* data_argb;
+  uint32_t row_stride;
+};
+
+using mrsRequestExternalI420VideoFrameCallback =
+    void(MRS_CALL*)(void* user_data, uint32_t request_id);
+
+using mrsRequestExternalArgb32VideoFrameCallback =
+    void(MRS_CALL*)(void* user_data, uint32_t request_id);
+
+/// Add a local video track from a custom video source external to the
+/// implementation. This allows feeding into WebRTC frames from any source,
+/// including generated or synthetic frames, for example for testing.
+/// The frame is provided from a callback as an I420-encoded buffer.
+MRS_API mrsResult MRS_CALL
+mrsPeerConnectionAddLocalVideoTrackFromExternalI420Source(
+    PeerConnectionHandle peerHandle,
+    const char* track_name,
+    mrsRequestExternalI420VideoFrameCallback callback,
+    void* user_data,
+    ExternalVideoTrackSourceHandle* handle) noexcept;
+
+/// Add a local video track from a custom video source external to the
+/// implementation. This allows feeding into WebRTC frames from any source,
+/// including generated or synthetic frames, for example for testing.
+/// The frame is provided from a callback as an ARGB 32-bits-per-pixel buffer.
+MRS_API mrsResult MRS_CALL
+mrsPeerConnectionAddLocalVideoTrackFromExternalArgb32Source(
+    PeerConnectionHandle peerHandle,
+    const char* track_name,
+    mrsRequestExternalArgb32VideoFrameCallback callback,
+    void* user_data,
+    ExternalVideoTrackSourceHandle* handle) noexcept;
+
+/// Remove a local video track from the given peer connection and destroy it.
+/// After this call returned, the video track source handle is invalid.
+MRS_API mrsResult MRS_CALL mrsPeerConnectionRemoveLocalVideoTracks(
+    PeerConnectionHandle peerHandle,
+    ExternalVideoTrackSourceHandle sourceHandle) noexcept;
+
+struct MRS_API mrsI420VideoFrame {
+  uint32_t width;
+  uint32_t height;
+  const uint8_t* data_y;
+  const uint8_t* data_u;
+  const uint8_t* data_v;
+  int stride_y;
+  int stride_u;
+  int stride_v;
+};
+
+MRS_API mrsResult MRS_CALL
+mrsExternalVideoTrackSourceCompleteI420VideoFrameRequest(
+    ExternalVideoTrackSourceHandle track_handle,
+    uint32_t request_id,
+    mrsI420VideoFrame frame) noexcept;
 
 /// Add a local audio track from a local audio capture device (microphone) to
 /// the collection of tracks to send to the remote peer.

@@ -924,6 +924,21 @@ namespace Microsoft.MixedReality.WebRTC
         }
 
         /// <summary>
+        /// Add a local video track backed by an external video source managed by the caller.
+        /// Unlike with <see cref="AddLocalVideoTrackAsync(LocalVideoTrackSettings)"/> which manages
+        /// a local video capture device and automatically produce frames, an external video source
+        /// provides video frames directly to WebRTC when asked to do so via the provided callback.
+        /// </summary>
+        /// <param name="trackName">Name of the new track.</param>
+        /// <param name="requestCallback">Callback invoked to request new video frames.</param>
+        public ExternalVideoTrackSource AddLocalVideoTrack(string trackName, I420VideoFrameRequestDelegate requestCallback)
+        {
+            ThrowIfConnectionNotOpen();
+            return PeerConnectionInterop.AddLocalVideoTrackFromExternalI420Source(this, _nativePeerhandle,
+                trackName, requestCallback);
+        }
+
+        /// <summary>
         /// Add to the current connection an audio track from a local audio capture device (microphone).
         /// </summary>
         /// <returns>Asynchronous task completed once the device is capturing and the track is added.</returns>

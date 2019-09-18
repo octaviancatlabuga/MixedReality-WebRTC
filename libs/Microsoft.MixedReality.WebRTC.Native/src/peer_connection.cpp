@@ -164,6 +164,31 @@ void PeerConnection::RemoveLocalVideoTrack() noexcept {
   local_video_sender_ = nullptr;
 }
 
+void PeerConnection::RemoveLocalVideoTracks(
+    ExternalVideoTrackSource& source) noexcept {
+  // if (auto* sink = local_video_observer_.get()) {
+  //  local_video_track_->RemoveSink(sink);
+  //}
+
+  // Remove all tracks which share this video track source.
+  // Currently there is no support for source sharing, so this should
+  // amount to a single track.
+  std::vector<rtc::scoped_refptr<webrtc::RtpSenderInterface>> senders =
+      peer_->GetSenders();
+  for (auto&& sender : senders) {
+    rtc::scoped_refptr<webrtc::MediaStreamTrackInterface> track =
+        sender->track();
+    if (track->kind() != webrtc::MediaStreamTrackInterface::kVideoKind) {
+      continue;
+    }
+    auto video_track = (webrtc::VideoTrackInterface*)track.get();
+    if (video_track->GetSource() ==
+        (webrtc::VideoTrackSourceInterface*)&source) {
+      peer_->RemoveTrack(sender);
+    }
+  }
+}
+
 void PeerConnection::SetLocalVideoTrackEnabled(bool enabled) noexcept {
   if (local_video_track_) {
     local_video_track_->set_enabled(enabled);

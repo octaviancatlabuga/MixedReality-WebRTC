@@ -1,0 +1,76 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license
+// information.
+
+#pragma once
+
+#include "media/base/adaptedvideotracksource.h"
+
+#include "callback.h"
+
+namespace Microsoft::MixedReality::WebRTC {
+
+/// Adapater for the frame buffer of an external video track source,
+/// to support various frame encodings in a unified way.
+class BufferAdapter {
+ public:
+  virtual ~BufferAdapter() = default;
+
+  /// Request a new video frame with the specified request ID.
+  virtual void RequestFrame(uint32_t request_id, int64_t time_ms) noexcept = 0;
+
+  /// Allocate a new video frame buffer with a video frame received from a
+  /// fulfilled frame request.
+  virtual rtc::scoped_refptr<webrtc::VideoFrameBuffer> FillBuffer() = 0;
+};
+
+/// Video track source acting as an adapter for an external source of raw
+/// frames.
+class ExternalVideoTrackSource : public rtc::AdaptedVideoTrackSource,
+                                 // public rtc::Runnable,
+                                 public rtc::MessageHandler {
+ public:
+  /// Helper to create an external video track source from a custom I420 video
+  /// frame request callback.
+  static MRS_API rtc::scoped_refptr<ExternalVideoTrackSource> createFromI420(
+      mrsRequestExternalI420VideoFrameCallback callback,
+      void* user_data);
+
+  /// Helper to create an external video track source from a custom ARGB32 video
+  /// frame request callback.
+  static MRS_API rtc::scoped_refptr<ExternalVideoTrackSource> createFromArgb32(
+      mrsRequestExternalArgb32VideoFrameCallback callback,
+      void* user_data);
+
+  MRS_API ~ExternalVideoTrackSource() override;
+
+  void StartCapture();
+
+  void StopCapture();
+
+  // VideoTrackSourceInterface
+  MRS_API bool is_screencast() const override { return false; }
+  MRS_API absl::optional<bool> needs_denoising() const override {
+    return absl::nullopt;
+  }
+
+  // MediaSourceInterface
+  MRS_API SourceState state() const override { return state_; }
+  MRS_API bool remote() const override { return false; }
+
+ protected:
+  static rtc::scoped_refptr<ExternalVideoTrackSource> create(
+      std::unique_ptr<BufferAdapter> adapter);
+  ExternalVideoTrackSource(std::unique_ptr<BufferAdapter> adapter);
+  void ProduceAndDispatchSingleFrame();
+  // void Run(rtc::Thread* thread) override;
+  void OnMessage(rtc::Message* message) override;
+  std::unique_ptr<BufferAdapter> adapter_;
+  std::unique_ptr<rtc::Thread> capture_thread_;
+  SourceState state_ = SourceState::kInitializing;
+
+  /// Next available ID for a frame request.
+  uint32_t next_request_id_{};
+};
+
+}  // namespace Microsoft::MixedReality::WebRTC

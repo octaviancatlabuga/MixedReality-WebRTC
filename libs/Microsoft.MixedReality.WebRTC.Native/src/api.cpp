@@ -8,6 +8,7 @@
 
 #include "api.h"
 #include "data_channel.h"
+#include "media/external_video_track_source.h"
 #include "peer_connection.h"
 #include "sdp_utils.h"
 
@@ -1000,6 +1001,112 @@ mrsPeerConnectionAddLocalVideoTrack(PeerConnectionHandle peerHandle,
     return MRS_SUCCESS;
   }
   return MRS_E_UNKNOWN;
+}
+
+mrsResult MRS_CALL mrsPeerConnectionAddLocalVideoTrackFromExternalI420Source(
+    PeerConnectionHandle peerHandle,
+    const char* track_name,
+    mrsRequestExternalI420VideoFrameCallback callback,
+    void* user_data,
+    ExternalVideoTrackSourceHandle* handle) noexcept {
+  if (!handle) {
+    return MRS_E_INVALID_PARAMETER;
+  }
+  *handle = nullptr;
+  auto peer = static_cast<PeerConnection*>(peerHandle);
+  if (!peer) {
+    return MRS_E_INVALID_PEER_HANDLE;
+  }
+  auto pc_factory = g_factory->GetExisting();
+  if (!pc_factory) {
+    return MRS_E_INVALID_OPERATION;
+  }
+
+  rtc::scoped_refptr<webrtc::VideoTrackSourceInterface> video_source =
+      ExternalVideoTrackSource::createFromI420(callback, user_data);
+  if (!video_source) {
+    return MRS_E_UNKNOWN;
+  }
+  std::string track_name_str;
+  if (track_name && (track_name[0] != '\0')) {
+    track_name_str = track_name;
+  } else {
+    track_name_str = "external_track";
+  }
+  rtc::scoped_refptr<webrtc::VideoTrackInterface> video_track =
+      pc_factory->CreateVideoTrack(track_name_str, video_source);
+  if (!video_track) {
+    return MRS_E_UNKNOWN;
+  }
+  if (peer->AddLocalVideoTrack(std::move(video_track))) {
+    *handle = video_source.get();
+    return MRS_SUCCESS;
+  }
+  return MRS_E_UNKNOWN;
+}
+
+mrsResult MRS_CALL mrsPeerConnectionAddLocalVideoTrackFromExternalArgb32Source(
+    PeerConnectionHandle peerHandle,
+    const char* track_name,
+    mrsRequestExternalArgb32VideoFrameCallback callback,
+    void* user_data,
+    ExternalVideoTrackSourceHandle* handle) noexcept {
+  if (!handle) {
+    return MRS_E_INVALID_PARAMETER;
+  }
+  *handle = nullptr;
+  auto peer = static_cast<PeerConnection*>(peerHandle);
+  if (!peer) {
+    return MRS_E_INVALID_PEER_HANDLE;
+  }
+  auto pc_factory = g_factory->GetExisting();
+  if (!pc_factory) {
+    return MRS_E_INVALID_OPERATION;
+  }
+
+  rtc::scoped_refptr<ExternalVideoTrackSource> video_source =
+      ExternalVideoTrackSource::createFromArgb32(callback, user_data);
+  if (!video_source) {
+    return MRS_E_UNKNOWN;
+  }
+  std::string track_name_str;
+  if (track_name && (track_name[0] != '\0')) {
+    track_name_str = track_name;
+  } else {
+    track_name_str = "external_track";
+  }
+  rtc::scoped_refptr<webrtc::VideoTrackInterface> video_track =
+      pc_factory->CreateVideoTrack(track_name_str, video_source);
+  if (!video_track) {
+    return MRS_E_UNKNOWN;
+  }
+  if (peer->AddLocalVideoTrack(std::move(video_track))) {
+    *handle = video_source.get();
+    return MRS_SUCCESS;
+  }
+  return MRS_E_UNKNOWN;
+}
+
+MRS_API mrsResult MRS_CALL mrsPeerConnectionRemoveLocalVideoTracks(
+    PeerConnectionHandle peerHandle,
+    ExternalVideoTrackSourceHandle sourceHandle) noexcept {
+  auto peer = static_cast<PeerConnection*>(peerHandle);
+  if (!peer) {
+    return MRS_E_INVALID_PEER_HANDLE;
+  }
+  auto source = static_cast<ExternalVideoTrackSource*>(sourceHandle);
+  if (!source) {
+    return MRS_E_INVALID_PEER_HANDLE;
+  }
+  peer->RemoveLocalVideoTracks(*source);
+  return MRS_SUCCESS;
+}
+
+mrsResult MRS_CALL mrsExternalVideoTrackSourceCompleteI420VideoFrameRequest(
+    ExternalVideoTrackSourceHandle track_handle,
+    uint32_t request_id,
+    mrsI420VideoFrame frame) noexcept {
+  return MRS_SUCCESS;
 }
 
 mrsResult MRS_CALL

@@ -7,6 +7,57 @@ using Microsoft.MixedReality.WebRTC.Interop;
 namespace Microsoft.MixedReality.WebRTC
 {
     /// <summary>
+    /// Single video frame encoded in I420 format (triplanar YUV, 12 bits per pixel).
+    /// See e.g. https://wiki.videolan.org/YUV/#I420 for details.
+    /// </summary>
+    /// <remarks>
+    /// The use of <c>ref struct</c> is an optimization to avoid heap allocation on each frame while
+    /// having a nicer-to-use container to pass a frame accross methods.
+    /// </remarks>
+    public ref struct I420VideoFrame
+    {
+        /// <summary>
+        /// Frame width, in pixels.
+        /// </summary>
+        public uint width;
+
+        /// <summary>
+        /// Frame height, in pixels.
+        /// </summary>
+        public uint height;
+
+        /// <summary>
+        /// Pointer to the Y plane buffer.
+        /// </summary>
+        public IntPtr dataY;
+
+        /// <summary>
+        /// Pointer to the U plane buffer.
+        /// </summary>
+        public IntPtr dataU;
+
+        /// <summary>
+        /// Pointer to the V plane buffer.
+        /// </summary>
+        public IntPtr dataV;
+
+        /// <summary>
+        /// Stride in bytes between rows of the Y plane.
+        /// </summary>
+        public int strideY;
+
+        /// <summary>
+        /// Stride in bytes between rows of the U plane.
+        /// </summary>
+        public int strideU;
+
+        /// <summary>
+        /// Stride in bytes between rows of the V plane.
+        /// </summary>
+        public int strideV;
+    }
+
+    /// <summary>
     /// Single video frame encoded in I420A format (triplanar YUV + alpha, 18 bits per pixel).
     /// See e.g. https://wiki.videolan.org/YUV/#I420 for details.
     /// </summary>
