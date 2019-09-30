@@ -563,6 +563,12 @@ mrsExternalVideoTrackSourceCompleteI420VideoFrameRequest(
     uint32_t request_id,
     const mrsI420VideoFrameView* frame_view) noexcept;
 
+MRS_API mrsResult MRS_CALL
+mrsExternalVideoTrackSourceCompleteArgb32VideoFrameRequest(
+    ExternalVideoTrackSourceHandle source_handle,
+    uint32_t request_id,
+    const mrsArgb32VideoFrameView* frame_view) noexcept;
+
 /// Add a local audio track from a local audio capture device (microphone) to
 /// the collection of tracks to send to the remote peer.
 MRS_API mrsResult MRS_CALL

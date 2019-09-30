@@ -39,16 +39,24 @@ constexpr uint32_t kBlue = 0xFFEFA400u;
 constexpr uint32_t kYellow = 0xFF00B9FFu;
 
 /// Generate a 16px by 16px test frame.
-void MRS_CALL GenerateQuadTestFrame(mrsArgb32FrameView* frame_view) {
+void MRS_CALL
+GenerateQuadTestFrame(void* /*user_data*/,
+                      ExternalVideoTrackSourceHandle source_handle,
+                      uint32_t request_id,
+                      int64_t /*timestamp_ms*/) {
   memset(FrameBuffer, 0, 256 * 4);
   FillSquareArgb32(FrameBuffer, 0, 0, 8, 8, 64, kRed);
   FillSquareArgb32(FrameBuffer, 8, 0, 8, 8, 64, kGreen);
   FillSquareArgb32(FrameBuffer, 0, 8, 8, 8, 64, kBlue);
   FillSquareArgb32(FrameBuffer, 8, 8, 8, 8, 64, kYellow);
-  frame_view->width = 16;
-  frame_view->height = 16;
-  frame_view->data_argb = FrameBuffer;
-  frame_view->row_stride = 16 * 4;
+  mrsArgb32VideoFrameView frame_view{};
+  frame_view.width = 16;
+  frame_view.height = 16;
+  frame_view.data_argb = FrameBuffer;
+  frame_view.row_stride = 16 * 4;
+  ASSERT_EQ(MRS_SUCCESS,
+            mrsExternalVideoTrackSourceCompleteArgb32VideoFrameRequest(
+                source_handle, request_id, &frame_view));
 }
 
 inline double ArgbColorError(uint32_t ref, uint32_t val) {
@@ -105,10 +113,13 @@ using ARGBVideoFrameCallback =
 TEST(ExternalVideoTrackSource, Simple) {
   LocalPeerPairRaii pair;
 
+  ExternalVideoTrackSourceHandle source_handle = nullptr;
   ASSERT_EQ(MRS_SUCCESS,
             mrsPeerConnectionAddLocalVideoTrackFromExternalArgb32Source(
-                pair.pc1(), "gen_track", &GenerateQuadTestFrame));
+                pair.pc1(), "gen_track", &GenerateQuadTestFrame, nullptr,
+                &source_handle));
   ASSERT_NE(0, mrsPeerConnectionIsLocalVideoTrackEnabled(pair.pc1()));
+  ASSERT_NE(nullptr, source_handle);
 
   uint32_t frame_count = 0;
   ARGBVideoFrameCallback argb_cb =
@@ -132,6 +143,7 @@ TEST(ExternalVideoTrackSource, Simple) {
 
   mrsPeerConnectionRegisterARGBRemoteVideoFrameCallback(pair.pc2(), nullptr,
                                                         nullptr);
+  mrsPeerConnectionRemoveLocalVideoTracks(pair.pc1(), source_handle);
 }
 
 #endif  // MRSW_EXCLUDE_DEVICE_TESTS

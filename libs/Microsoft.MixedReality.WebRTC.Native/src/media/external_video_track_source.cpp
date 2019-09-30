@@ -167,6 +167,31 @@ mrsResult ExternalVideoTrackSource::CompleteRequest(
   return MRS_SUCCESS;
 }
 
+mrsResult ExternalVideoTrackSource::CompleteRequest(
+    uint32_t request_id,
+    const mrsArgb32VideoFrameView& frame_view) {
+  // Validate pending request ID and retrieve frame timestamp
+  int64_t timestamp_ms;
+  {
+    rtc::CritScope lock(&request_lock_);
+    auto it = pending_requests_.find(request_id);
+    if (it == pending_requests_.end()) {
+      return MRS_E_INVALID_PARAMETER;
+    }
+    timestamp_ms = it->second;
+    pending_requests_.erase(it);
+  }
+
+  // Create and dispatch the video frame
+  webrtc::VideoFrame frame{
+      webrtc::VideoFrame::Builder()
+          .set_video_frame_buffer(adapter_->FillBuffer(frame_view))
+          .set_timestamp_ms(timestamp_ms)
+          .build()};
+  OnFrame(frame);
+  return MRS_SUCCESS;
+}
+
 // void ExternalVideoTrackSource::Run(rtc::Thread*) {
 //  while (capture_thread_->ProcessMessages()) {
 //

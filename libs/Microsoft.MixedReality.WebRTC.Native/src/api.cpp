@@ -1116,6 +1116,20 @@ mrsResult MRS_CALL mrsExternalVideoTrackSourceCompleteI420VideoFrameRequest(
   return source->CompleteRequest(request_id, *frame_view);
 }
 
+mrsResult MRS_CALL mrsExternalVideoTrackSourceCompleteArgb32VideoFrameRequest(
+    ExternalVideoTrackSourceHandle source_handle,
+    uint32_t request_id,
+    const mrsArgb32VideoFrameView* frame_view) noexcept {
+  if (!frame_view) {
+    return MRS_E_INVALID_PARAMETER;
+  }
+  auto source = static_cast<ExternalVideoTrackSource*>(source_handle);
+  if (!source) {
+    return MRS_E_INVALID_PEER_HANDLE;
+  }
+  return source->CompleteRequest(request_id, *frame_view);
+}
+
 mrsResult MRS_CALL
 mrsPeerConnectionAddLocalAudioTrack(PeerConnectionHandle peerHandle) noexcept {
   if (auto peer = static_cast<PeerConnection*>(peerHandle)) {

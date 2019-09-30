@@ -56,6 +56,8 @@ class ExternalVideoTrackSource : public rtc::AdaptedVideoTrackSource,
   //< TODO - This breaks the buffer abstraction, refactor...
   MRS_API mrsResult CompleteRequest(uint32_t request_id,
                                     const mrsI420VideoFrameView& frame_view);
+  MRS_API mrsResult CompleteRequest(uint32_t request_id,
+                                    const mrsArgb32VideoFrameView& frame_view);
 
   // VideoTrackSourceInterface
   MRS_API bool is_screencast() const override { return false; }

@@ -178,7 +178,10 @@ void PeerConnection::RemoveLocalVideoTracks(
   for (auto&& sender : senders) {
     rtc::scoped_refptr<webrtc::MediaStreamTrackInterface> track =
         sender->track();
-    if (track->kind() != webrtc::MediaStreamTrackInterface::kVideoKind) {
+    // Apparently track can be null if destroyed already
+	//< FIXME - Is this an error?
+    if (!track ||
+        (track->kind() != webrtc::MediaStreamTrackInterface::kVideoKind)) {
       continue;
     }
     auto video_track = (webrtc::VideoTrackInterface*)track.get();
