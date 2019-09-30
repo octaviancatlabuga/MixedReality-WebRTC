@@ -495,29 +495,17 @@ MRS_API mrsResult MRS_CALL
 mrsPeerConnectionAddLocalVideoTrack(PeerConnectionHandle peerHandle,
                                     VideoDeviceConfiguration config) noexcept;
 
-struct mrsI420FrameView {
-  uint32_t width;
-  uint32_t height;
-  const void* data_y;
-  const void* data_u;
-  const void* data_v;
-  uint32_t stride_y;
-  uint32_t stride_u;
-  uint32_t stride_v;
-};
-
-struct mrsArgb32FrameView {
-  uint32_t width;
-  uint32_t height;
-  const void* data_argb;
-  uint32_t row_stride;
-};
-
 using mrsRequestExternalI420VideoFrameCallback =
-    void(MRS_CALL*)(void* user_data, uint32_t request_id);
+    void(MRS_CALL*)(void* user_data,
+                    ExternalVideoTrackSourceHandle source_handle,
+                    uint32_t request_id,
+                    int64_t timestamp_ms);
 
 using mrsRequestExternalArgb32VideoFrameCallback =
-    void(MRS_CALL*)(void* user_data, uint32_t request_id);
+    void(MRS_CALL*)(void* user_data,
+                    ExternalVideoTrackSourceHandle source_handle,
+                    uint32_t request_id,
+                    int64_t timestamp_ms);
 
 /// Add a local video track from a custom video source external to the
 /// implementation. This allows feeding into WebRTC frames from any source,
@@ -549,7 +537,8 @@ MRS_API mrsResult MRS_CALL mrsPeerConnectionRemoveLocalVideoTracks(
     PeerConnectionHandle peerHandle,
     ExternalVideoTrackSourceHandle sourceHandle) noexcept;
 
-struct MRS_API mrsI420VideoFrame {
+/// View over an existing video frame encoded in I420 format.
+struct MRS_API mrsI420VideoFrameView {
   uint32_t width;
   uint32_t height;
   const uint8_t* data_y;
@@ -560,11 +549,19 @@ struct MRS_API mrsI420VideoFrame {
   int stride_v;
 };
 
+/// View over an existing video frame encoded in 32-bit ARGB format.
+struct mrsArgb32VideoFrameView {
+  uint32_t width;
+  uint32_t height;
+  const uint32_t* data_argb;
+  int row_stride;
+};
+
 MRS_API mrsResult MRS_CALL
 mrsExternalVideoTrackSourceCompleteI420VideoFrameRequest(
-    ExternalVideoTrackSourceHandle track_handle,
+    ExternalVideoTrackSourceHandle source_handle,
     uint32_t request_id,
-    mrsI420VideoFrame frame) noexcept;
+    const mrsI420VideoFrameView* frame_view) noexcept;
 
 /// Add a local audio track from a local audio capture device (microphone) to
 /// the collection of tracks to send to the remote peer.

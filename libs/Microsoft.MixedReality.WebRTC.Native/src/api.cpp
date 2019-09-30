@@ -1088,13 +1088,13 @@ mrsResult MRS_CALL mrsPeerConnectionAddLocalVideoTrackFromExternalArgb32Source(
 }
 
 MRS_API mrsResult MRS_CALL mrsPeerConnectionRemoveLocalVideoTracks(
-    PeerConnectionHandle peerHandle,
-    ExternalVideoTrackSourceHandle sourceHandle) noexcept {
-  auto peer = static_cast<PeerConnection*>(peerHandle);
+    PeerConnectionHandle peer_handle,
+    ExternalVideoTrackSourceHandle source_handle) noexcept {
+  auto peer = static_cast<PeerConnection*>(peer_handle);
   if (!peer) {
     return MRS_E_INVALID_PEER_HANDLE;
   }
-  auto source = static_cast<ExternalVideoTrackSource*>(sourceHandle);
+  auto source = static_cast<ExternalVideoTrackSource*>(source_handle);
   if (!source) {
     return MRS_E_INVALID_PEER_HANDLE;
   }
@@ -1103,10 +1103,17 @@ MRS_API mrsResult MRS_CALL mrsPeerConnectionRemoveLocalVideoTracks(
 }
 
 mrsResult MRS_CALL mrsExternalVideoTrackSourceCompleteI420VideoFrameRequest(
-    ExternalVideoTrackSourceHandle track_handle,
+    ExternalVideoTrackSourceHandle source_handle,
     uint32_t request_id,
-    mrsI420VideoFrame frame) noexcept {
-  return MRS_SUCCESS;
+    const mrsI420VideoFrameView* frame_view) noexcept {
+  if (!frame_view) {
+    return MRS_E_INVALID_PARAMETER;
+  }
+  auto source = static_cast<ExternalVideoTrackSource*>(source_handle);
+  if (!source) {
+    return MRS_E_INVALID_PEER_HANDLE;
+  }
+  return source->CompleteRequest(request_id, *frame_view);
 }
 
 mrsResult MRS_CALL

@@ -18,23 +18,27 @@ enum {
 /// Buffer adapter for an I420 video frame.
 class I420BufferAdapter : public BufferAdapter {
  public:
-  using RequestCallback = Callback<uint32_t>;
+  using RequestCallback =
+      Callback<ExternalVideoTrackSourceHandle, uint32_t, int64_t>;
   I420BufferAdapter(RequestCallback callback)
       : callback_(std::move(callback)) {}
   ~I420BufferAdapter() override = default;
-  void RequestFrame(uint32_t request_id, int64_t time_ms) noexcept override {
+  void RequestFrame(ExternalVideoTrackSourceHandle source_handle,
+                    uint32_t request_id,
+                    int64_t time_ms) noexcept override {
     // Request a single I420 frame
-    callback_(request_id);
+    callback_(source_handle, request_id, time_ms);
   }
-  rtc::scoped_refptr<webrtc::VideoFrameBuffer> FillBuffer() override {
-    // Create I420 buffer
-    rtc::scoped_refptr<webrtc::I420Buffer> buffer = webrtc::I420Buffer::Copy(
-        frame_view.width, frame_view.height, (const uint8_t*)frame_view.data_y,
-        frame_view.stride_y, (const uint8_t*)frame_view.data_u,
-        frame_view.stride_u, (const uint8_t*)frame_view.data_v,
-        frame_view.stride_v);
-
-    return buffer;
+  rtc::scoped_refptr<webrtc::VideoFrameBuffer> FillBuffer(
+      const mrsI420VideoFrameView& frame_view) override {
+    return webrtc::I420Buffer::Copy(frame_view.width, frame_view.height,
+                                    frame_view.data_y, frame_view.stride_y,
+                                    frame_view.data_u, frame_view.stride_u,
+                                    frame_view.data_v, frame_view.stride_v);
+  }
+  rtc::scoped_refptr<webrtc::VideoFrameBuffer> FillBuffer(
+      const mrsArgb32VideoFrameView& /*frame_view*/) override {
+    RTC_CHECK(false);
   }
 
  private:
@@ -44,15 +48,23 @@ class I420BufferAdapter : public BufferAdapter {
 /// Buffer adapter for a 32-bit ARGB video frame.
 class Argb32BufferAdapter : public BufferAdapter {
  public:
-  using RequestCallback = Callback<uint32_t>;
+  using RequestCallback =
+      Callback<ExternalVideoTrackSourceHandle, uint32_t, int64_t>;
   Argb32BufferAdapter(RequestCallback callback)
       : callback_(std::move(callback)) {}
   ~Argb32BufferAdapter() override = default;
-  void RequestFrame(uint32_t request_id, int64_t time_ms) noexcept override {
+  void RequestFrame(ExternalVideoTrackSourceHandle source_handle,
+                    uint32_t request_id,
+                    int64_t time_ms) noexcept override {
     // Request a single ARGB32 frame
-    callback_(request_id);
+    callback_(source_handle, request_id, time_ms);
   }
-  rtc::scoped_refptr<webrtc::VideoFrameBuffer> FillBuffer() override {
+  rtc::scoped_refptr<webrtc::VideoFrameBuffer> FillBuffer(
+      const mrsI420VideoFrameView& /*frame_view*/) override {
+    RTC_CHECK(false);
+  }
+  rtc::scoped_refptr<webrtc::VideoFrameBuffer> FillBuffer(
+      const mrsArgb32VideoFrameView& frame_view) override {
     // Create I420 buffer
     rtc::scoped_refptr<webrtc::I420Buffer> buffer =
         webrtc::I420Buffer::Create(frame_view.width, frame_view.height);
@@ -79,16 +91,16 @@ rtc::scoped_refptr<ExternalVideoTrackSource>
 ExternalVideoTrackSource::createFromI420(
     mrsRequestExternalI420VideoFrameCallback callback,
     void* user_data) {
-  return ExternalVideoTrackSource::create(
-      std::make_unique<I420BufferAdapter>(callback, user_data));
+  return ExternalVideoTrackSource::create(std::make_unique<I420BufferAdapter>(
+      I420BufferAdapter::RequestCallback{callback, user_data}));
 }
 
 rtc::scoped_refptr<ExternalVideoTrackSource>
 ExternalVideoTrackSource::createFromArgb32(
     mrsRequestExternalArgb32VideoFrameCallback callback,
     void* user_data) {
-  return ExternalVideoTrackSource::create(
-      std::make_unique<Argb32BufferAdapter>(callback, user_data));
+  return ExternalVideoTrackSource::create(std::make_unique<Argb32BufferAdapter>(
+      Argb32BufferAdapter::RequestCallback{callback, user_data}));
 }
 
 rtc::scoped_refptr<ExternalVideoTrackSource> ExternalVideoTrackSource::create(
@@ -115,14 +127,6 @@ ExternalVideoTrackSource::~ExternalVideoTrackSource() {
   StopCapture();
 }
 
-void ExternalVideoTrackSource::ProduceAndDispatchSingleFrame() {
-  webrtc::VideoFrame frame{webrtc::VideoFrame::Builder()
-                               .set_video_frame_buffer(adapter_->FillBuffer())
-                               .set_timestamp_ms(rtc::TimeMillis())
-                               .build()};
-  OnFrame(frame);
-}
-
 void ExternalVideoTrackSource::StartCapture() {
   // Start capture thread
   state_ = SourceState::kLive;
@@ -138,6 +142,31 @@ void ExternalVideoTrackSource::StopCapture() {
   state_ = SourceState::kEnded;
 }
 
+mrsResult ExternalVideoTrackSource::CompleteRequest(
+    uint32_t request_id,
+    const mrsI420VideoFrameView& frame_view) {
+  // Validate pending request ID and retrieve frame timestamp
+  int64_t timestamp_ms;
+  {
+    rtc::CritScope lock(&request_lock_);
+    auto it = pending_requests_.find(request_id);
+    if (it == pending_requests_.end()) {
+      return MRS_E_INVALID_PARAMETER;
+    }
+    timestamp_ms = it->second;
+    pending_requests_.erase(it);
+  }
+
+  // Create and dispatch the video frame
+  webrtc::VideoFrame frame{
+      webrtc::VideoFrame::Builder()
+          .set_video_frame_buffer(adapter_->FillBuffer(frame_view))
+          .set_timestamp_ms(timestamp_ms)
+          .build()};
+  OnFrame(frame);
+  return MRS_SUCCESS;
+}
+
 // void ExternalVideoTrackSource::Run(rtc::Thread*) {
 //  while (capture_thread_->ProcessMessages()) {
 //
@@ -150,8 +179,14 @@ void ExternalVideoTrackSource::OnMessage(rtc::Message* message) {
       const int64_t now = rtc::TimeMillis();
 
       // Request a frame from the external video source
-      const uint32_t request_id = next_request_id_++;
-      adapter_->RequestFrame(request_id, now);
+      const ExternalVideoTrackSourceHandle source_handle = this;
+      uint32_t request_id;
+      {
+        rtc::CritScope lock(&request_lock_);
+        request_id = next_request_id_++;
+        pending_requests_.emplace(request_id, now);
+      }
+      adapter_->RequestFrame(source_handle, request_id, now);
 
       // Schedule a new request for 30ms from now
       //< TODO - this is unreliable and prone to drifting; figure out something

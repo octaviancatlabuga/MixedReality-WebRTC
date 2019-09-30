@@ -117,7 +117,7 @@ namespace Microsoft.MixedReality.WebRTC.Interop
         public class ExternalI420VideoFrameRequestCallbackArgs
         {
             public PeerConnection Peer;
-            public PeerConnection.I420VideoFrameRequestDelegate FrameRequestCallback;
+            public I420VideoFrameRequestDelegate FrameRequestCallback;
         }
 
         [MonoPInvokeCallback(typeof(ConnectedDelegate))]
@@ -298,13 +298,16 @@ namespace Microsoft.MixedReality.WebRTC.Interop
         }
 
         [MonoPInvokeCallback(typeof(PeerConnectionRequestExternalI420VideoFrameCallback))]
-        public static void RequestI420VideoFrameFromExternalSourceCallback(IntPtr userData, uint requestId)
+        public static void RequestI420VideoFrameFromExternalSourceCallback(IntPtr userData, IntPtr sourceHandle,
+            uint requestId, long timestampMs)
         {
             var handle = GCHandle.FromIntPtr(userData);
             var args = (handle.Target as ExternalI420VideoFrameRequestCallbackArgs);
-            var request = new PeerConnection.FrameRequest
+            var request = new FrameRequest
             {
-                RequestId = requestId
+                SourceHandle = sourceHandle,
+                RequestId = requestId,
+                TimestampMs = timestampMs
             };
             args.FrameRequestCallback.Invoke(request);
         }
@@ -410,10 +413,12 @@ namespace Microsoft.MixedReality.WebRTC.Interop
             IntPtr data, uint bitsPerSample, uint sampleRate, uint channelCount, uint frameCount);
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Ansi)]
-        public unsafe delegate void PeerConnectionRequestExternalI420VideoFrameCallback(IntPtr userData, uint requestId);
+        public unsafe delegate void PeerConnectionRequestExternalI420VideoFrameCallback(IntPtr userData,
+            IntPtr sourceHandle, uint requestId, long timestampMs);
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Ansi)]
-        public unsafe delegate void PeerConnectionRequestExternalARGBVideoFrameCallback(IntPtr userData, uint requestId);
+        public unsafe delegate void PeerConnectionRequestExternalARGBVideoFrameCallback(IntPtr userData,
+            IntPtr sourceHandle, uint requestId, long timestampMs);
 
         #endregion
 
@@ -527,7 +532,8 @@ namespace Microsoft.MixedReality.WebRTC.Interop
         [DllImport(Utils.dllPath, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi,
             EntryPoint = "mrsPeerConnectionAddLocalVideoTrackFromExternalARGBSource")]
         public static extern uint PeerConnection_AddLocalVideoTrackFromExternalARGBSource(IntPtr peerHandle,
-            string trackName, PeerConnectionRequestExternalARGBVideoFrameCallback callback, out IntPtr sourceHandle);
+            string trackName, PeerConnectionRequestExternalARGBVideoFrameCallback callback, IntPtr userData,
+            out IntPtr sourceHandle);
 
         [DllImport(Utils.dllPath, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi,
             EntryPoint = "mrsPeerConnectionRemoveLocalVideoTracks")]

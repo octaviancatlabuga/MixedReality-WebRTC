@@ -27,8 +27,10 @@ struct Callback {
   /// User-provided opaque pointer passed as first argument to the raw function.
   void* user_data_{};
 
-  Callback(callback_type callback, void* user_data)
-      : callback_(callback), user_data_(user_data) noexcept {}
+  Callback() noexcept = default;
+
+  Callback(callback_type callback, void* user_data) noexcept
+      : callback_(callback), user_data_(user_data) {}
 
   /// Check if the callback has a valid function pointer.
   constexpr explicit operator bool() const noexcept {

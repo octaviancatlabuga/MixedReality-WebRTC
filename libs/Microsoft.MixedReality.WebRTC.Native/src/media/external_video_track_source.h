@@ -17,11 +17,16 @@ class BufferAdapter {
   virtual ~BufferAdapter() = default;
 
   /// Request a new video frame with the specified request ID.
-  virtual void RequestFrame(uint32_t request_id, int64_t time_ms) noexcept = 0;
+  virtual void RequestFrame(ExternalVideoTrackSourceHandle source_handle,
+                            uint32_t request_id,
+                            int64_t time_ms) noexcept = 0;
 
   /// Allocate a new video frame buffer with a video frame received from a
   /// fulfilled frame request.
-  virtual rtc::scoped_refptr<webrtc::VideoFrameBuffer> FillBuffer() = 0;
+  virtual rtc::scoped_refptr<webrtc::VideoFrameBuffer> FillBuffer(
+      const mrsI420VideoFrameView& frame_view) = 0;
+  virtual rtc::scoped_refptr<webrtc::VideoFrameBuffer> FillBuffer(
+      const mrsArgb32VideoFrameView& frame_view) = 0;
 };
 
 /// Video track source acting as an adapter for an external source of raw
@@ -48,6 +53,10 @@ class ExternalVideoTrackSource : public rtc::AdaptedVideoTrackSource,
 
   void StopCapture();
 
+  //< TODO - This breaks the buffer abstraction, refactor...
+  MRS_API mrsResult CompleteRequest(uint32_t request_id,
+                                    const mrsI420VideoFrameView& frame_view);
+
   // VideoTrackSourceInterface
   MRS_API bool is_screencast() const override { return false; }
   MRS_API absl::optional<bool> needs_denoising() const override {
@@ -62,15 +71,20 @@ class ExternalVideoTrackSource : public rtc::AdaptedVideoTrackSource,
   static rtc::scoped_refptr<ExternalVideoTrackSource> create(
       std::unique_ptr<BufferAdapter> adapter);
   ExternalVideoTrackSource(std::unique_ptr<BufferAdapter> adapter);
-  void ProduceAndDispatchSingleFrame();
   // void Run(rtc::Thread* thread) override;
   void OnMessage(rtc::Message* message) override;
   std::unique_ptr<BufferAdapter> adapter_;
   std::unique_ptr<rtc::Thread> capture_thread_;
   SourceState state_ = SourceState::kInitializing;
 
+  /// Collection of pending frame requests
+  std::map<uint32_t, int64_t> pending_requests_ RTC_GUARDED_BY(request_lock_);
+
   /// Next available ID for a frame request.
-  uint32_t next_request_id_{};
+  uint32_t next_request_id_ RTC_GUARDED_BY(request_lock_){};
+
+  /// Lock for frame requests.
+  rtc::CriticalSection request_lock_;
 };
 
 }  // namespace Microsoft::MixedReality::WebRTC
