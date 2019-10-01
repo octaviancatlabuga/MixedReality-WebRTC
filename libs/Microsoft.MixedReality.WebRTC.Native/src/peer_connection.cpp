@@ -111,6 +111,14 @@ PeerConnection::~PeerConnection() noexcept {
   // Close the connection
   peer_->Close();
 
+  // Remove local tracks
+  {
+    rtc::CritScope lock(&tracks_mutex_);
+    while (!local_video_tracks_.empty()) {
+      RemoveLocalVideoTrack(*local_video_tracks_.back());
+    }
+  }
+
   // Ensure that observers (sinks) are removed, otherwise the media pipelines
   // will continue to try to feed them with data after they're destroyed
   // RemoveLocalVideoTrack(); TODO - do we need to keep a list of local tracks

@@ -1039,13 +1039,15 @@ mrsResult MRS_CALL mrsPeerConnectionAddLocalVideoTrackFromExternalI420Source(
   if (!video_source) {
     return MRS_E_UNKNOWN;
   }
-  RTC_CHECK(false);  //< TODO - who is keeping the video_source alive????
   std::string track_name_str;
   if (track_name && (track_name[0] != '\0')) {
     track_name_str = track_name;
   } else {
     track_name_str = "external_track";
   }
+  // The video track keeps a reference to the video source; let's hope this
+  // does not change, because this is not explicitly mentioned in the docs,
+  // and the video track is the only one keeping the video source alive.
   rtc::scoped_refptr<webrtc::VideoTrackInterface> video_track =
       pc_factory->CreateVideoTrack(track_name_str, video_source);
   if (!video_track) {
@@ -1087,7 +1089,9 @@ mrsResult MRS_CALL mrsPeerConnectionAddLocalVideoTrackFromExternalArgb32Source(
   if (!video_source) {
     return MRS_E_UNKNOWN;
   }
-  RTC_CHECK(false);//< TODO - who is keeping the video_source alive????
+  // The video track keeps a reference to the video source; let's hope this
+  // does not change, because this is not explicitly mentioned in the docs,
+  // and the video track is the only one keeping the video source alive.
   std::string track_name_str;
   if (track_name && (track_name[0] != '\0')) {
     track_name_str = track_name;
