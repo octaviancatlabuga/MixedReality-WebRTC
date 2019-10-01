@@ -859,6 +859,7 @@ namespace Microsoft.MixedReality.WebRTC
         /// <summary>
         /// Add to the current connection a video track from a local video capture device (webcam).
         /// </summary>
+        /// <param name="trackName">Name of the newly created track.</param>
         /// <param name="settings">Video capture settings for the local video track.</param>
         /// <returns>Asynchronous task completed once the device is capturing and the track is added.</returns>
         /// <remarks>
@@ -867,7 +868,7 @@ namespace Microsoft.MixedReality.WebRTC
         /// for more details.
         /// </remarks>
         /// <exception xref="InvalidOperationException">The peer connection is not intialized.</exception>
-        public Task AddLocalVideoTrackAsync(LocalVideoTrackSettings settings = default)
+        public Task<LocalVideoTrack> AddLocalVideoTrackAsync(string trackName, LocalVideoTrackSettings settings = default)
         {
             ThrowIfConnectionNotOpen();
             return Task.Run(() => {
@@ -883,55 +884,33 @@ namespace Microsoft.MixedReality.WebRTC
                     Framerate = settings.framerate.GetValueOrDefault(0.0),
                     EnableMixedRealityCapture = settings.enableMrc
                 } : new PeerConnectionInterop.VideoDeviceConfiguration());
-                uint res = PeerConnectionInterop.PeerConnection_AddLocalVideoTrack(_nativePeerhandle, config);
+                uint res = PeerConnectionInterop.PeerConnection_AddLocalVideoTrack(_nativePeerhandle, trackName, config,
+                    out IntPtr trackHandle);
                 Utils.ThrowOnErrorCode(res);
+                var track = new LocalVideoTrack(this, _nativePeerhandle, trackHandle, trackName);
+                return track;
             });
-        }
-
-        /// <summary>
-        /// Enable or disable the local video track associated with this peer connection.
-        /// Disable video tracks are still active, but emit only black frames.
-        /// </summary>
-        /// <param name="enabled"><c>true</c> to enable the track, or <c>false</c> to disable it</param>
-        /// <exception xref="InvalidOperationException">The peer connection is not intialized.</exception>
-        public void SetLocalVideoTrackEnabled(bool enabled = true)
-        {
-            ThrowIfConnectionNotOpen();
-            uint res = PeerConnectionInterop.PeerConnection_SetLocalVideoTrackEnabled(_nativePeerhandle, enabled ? -1 : 0);
-            Utils.ThrowOnErrorCode(res);
-        }
-
-        /// <summary>
-        /// Check if the local video track associated with this peer connection is enabled.
-        /// Disable video tracks are still active, but emit only black frames.
-        /// </summary>
-        /// <returns><c>true</c> if the track is enabled, or <c>false</c> otherwise</returns>
-        /// <exception xref="InvalidOperationException">The peer connection is not intialized.</exception>
-        public bool IsLocalVideoTrackEnabled()
-        {
-            ThrowIfConnectionNotOpen();
-            return (PeerConnectionInterop.PeerConnection_IsLocalVideoTrackEnabled(_nativePeerhandle) != 0);
         }
 
         /// <summary>
         /// Remove from the current connection the local video track added with <see cref="AddLocalAudioTrackAsync"/>.
         /// </summary>
         /// <exception xref="InvalidOperationException">The peer connection is not intialized.</exception>
-        public void RemoveLocalVideoTrack()
+        public void RemoveLocalVideoTrack(LocalVideoTrack track)
         {
             ThrowIfConnectionNotOpen();
-            PeerConnectionInterop.PeerConnection_RemoveLocalVideoTrack(_nativePeerhandle);
+            PeerConnectionInterop.PeerConnection_RemoveLocalVideoTrack(_nativePeerhandle, track._nativeHandle);
         }
 
         /// <summary>
         /// Add a local video track backed by an external video source managed by the caller.
-        /// Unlike with <see cref="AddLocalVideoTrackAsync(LocalVideoTrackSettings)"/> which manages
+        /// Unlike with <see cref="AddLocalVideoTrackAsync(string, LocalVideoTrackSettings)"/> which manages
         /// a local video capture device and automatically produce frames, an external video source
         /// provides video frames directly to WebRTC when asked to do so via the provided callback.
         /// </summary>
         /// <param name="trackName">Name of the new track.</param>
         /// <param name="requestCallback">Callback invoked to request new video frames.</param>
-        public ExternalVideoTrackSource AddLocalVideoTrack(string trackName, I420VideoFrameRequestDelegate requestCallback)
+        public LocalVideoTrack AddLocalVideoTrack(string trackName, I420VideoFrameRequestDelegate requestCallback)
         {
             ThrowIfConnectionNotOpen();
             return PeerConnectionInterop.AddLocalVideoTrackFromExternalI420Source(this, _nativePeerhandle,

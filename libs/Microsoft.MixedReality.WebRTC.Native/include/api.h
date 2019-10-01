@@ -15,6 +15,9 @@ rtc::Thread* UnsafeGetWorkerThread();
 
 extern "C" {
 
+/// 32-bit boolean for interop API.
+enum class mrsBool : int32_t { kTrue = -1, kFalse = 0 };
+
 //
 // Errors
 //
@@ -497,9 +500,11 @@ struct VideoDeviceConfiguration {
 /// |enable_mrc| allows enabling Mixed Reality Capture on HoloLens devices, and
 /// is otherwise ignored for other video capture devices. On UWP this must be
 /// invoked from another thread than the main UI thread.
-MRS_API mrsResult MRS_CALL
-mrsPeerConnectionAddLocalVideoTrack(PeerConnectionHandle peerHandle,
-                                    VideoDeviceConfiguration config) noexcept;
+MRS_API mrsResult MRS_CALL mrsPeerConnectionAddLocalVideoTrack(
+    PeerConnectionHandle peerHandle,
+	const char* track_name,
+    VideoDeviceConfiguration config,
+    LocalVideoTrackHandle* trackHandle) noexcept;
 
 using mrsRequestExternalI420VideoFrameCallback =
     void(MRS_CALL*)(void* user_data,
@@ -523,7 +528,8 @@ mrsPeerConnectionAddLocalVideoTrackFromExternalI420Source(
     const char* track_name,
     mrsRequestExternalI420VideoFrameCallback callback,
     void* user_data,
-    ExternalVideoTrackSourceHandle* handle) noexcept;
+    ExternalVideoTrackSourceHandle* source_handle,
+    LocalVideoTrackHandle* track_handle) noexcept;
 
 /// Add a local video track from a custom video source external to the
 /// implementation. This allows feeding into WebRTC frames from any source,
@@ -535,7 +541,8 @@ mrsPeerConnectionAddLocalVideoTrackFromExternalArgb32Source(
     const char* track_name,
     mrsRequestExternalArgb32VideoFrameCallback callback,
     void* user_data,
-    ExternalVideoTrackSourceHandle* handle) noexcept;
+    ExternalVideoTrackSourceHandle* source_handle,
+    LocalVideoTrackHandle* track_handle) noexcept;
 
 /// Remove a local video track from the given peer connection and destroy it.
 /// After this call returned, the video track source handle is invalid.
@@ -627,7 +634,8 @@ MRS_API mrsResult MRS_CALL mrsPeerConnectionAddDataChannel(
     DataChannelHandle* dataChannelHandleOut) noexcept;
 
 MRS_API mrsResult MRS_CALL mrsPeerConnectionRemoveLocalVideoTrack(
-    PeerConnectionHandle peerHandle, LocalVideoTrackHandle trackHandle) noexcept;
+    PeerConnectionHandle peerHandle,
+    LocalVideoTrackHandle trackHandle) noexcept;
 
 MRS_API void MRS_CALL mrsPeerConnectionRemoveLocalAudioTrack(
     PeerConnectionHandle peerHandle) noexcept;
@@ -637,18 +645,18 @@ MRS_API mrsResult MRS_CALL mrsPeerConnectionRemoveDataChannel(
     DataChannelHandle dataChannelHandle) noexcept;
 
 MRS_API mrsResult MRS_CALL
-mrsPeerConnectionSetLocalVideoTrackEnabled(PeerConnectionHandle peerHandle,
-                                           int32_t enabled) noexcept;
+mrsLocalVideoTrackSetEnabled(PeerConnectionHandle peerHandle,
+                             mrsBool enabled) noexcept;
 
-MRS_API int32_t MRS_CALL mrsPeerConnectionIsLocalVideoTrackEnabled(
-    PeerConnectionHandle peerHandle) noexcept;
+MRS_API mrsBool MRS_CALL
+mrsLocalVideoTrackIsEnabled(LocalVideoTrackHandle track_handle) noexcept;
 
 MRS_API mrsResult MRS_CALL
 mrsPeerConnectionSetLocalAudioTrackEnabled(PeerConnectionHandle peerHandle,
-                                           int32_t enabled) noexcept;
+                                           mrsBool enabled) noexcept;
 
-MRS_API int32_t MRS_CALL mrsPeerConnectionIsLocalAudioTrackEnabled(
-    PeerConnectionHandle peerHandle) noexcept;
+MRS_API mrsBool MRS_CALL mrsPeerConnectionIsLocalAudioTrackEnabled(
+    LocalVideoTrackHandle track_handle) noexcept;
 
 MRS_API mrsResult MRS_CALL
 mrsDataChannelSendMessage(DataChannelHandle dataChannelHandle,

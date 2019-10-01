@@ -521,19 +521,20 @@ namespace Microsoft.MixedReality.WebRTC.Interop
 
         [DllImport(Utils.dllPath, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi,
             EntryPoint = "mrsPeerConnectionAddLocalVideoTrack")]
-        public static extern uint PeerConnection_AddLocalVideoTrack(IntPtr peerHandle, VideoDeviceConfiguration config);
+        public static extern uint PeerConnection_AddLocalVideoTrack(IntPtr peerHandle,
+            string trackName, VideoDeviceConfiguration config, out IntPtr trackHandle);
 
         [DllImport(Utils.dllPath, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi,
             EntryPoint = "mrsPeerConnectionAddLocalVideoTrackFromExternalI420Source")]
         public static extern uint PeerConnection_AddLocalVideoTrackFromExternalI420Source(IntPtr peerHandle,
             string trackName, PeerConnectionRequestExternalI420VideoFrameCallback callback, IntPtr userData,
-            out IntPtr sourceHandle);
+            out IntPtr sourceHandle, out IntPtr trackHandle);
 
         [DllImport(Utils.dllPath, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi,
             EntryPoint = "mrsPeerConnectionAddLocalVideoTrackFromExternalARGBSource")]
         public static extern uint PeerConnection_AddLocalVideoTrackFromExternalARGBSource(IntPtr peerHandle,
             string trackName, PeerConnectionRequestExternalARGBVideoFrameCallback callback, IntPtr userData,
-            out IntPtr sourceHandle);
+            out IntPtr sourceHandle, out IntPtr trackHandle);
 
         [DllImport(Utils.dllPath, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi,
             EntryPoint = "mrsPeerConnectionRemoveLocalVideoTracks")]
@@ -603,7 +604,7 @@ namespace Microsoft.MixedReality.WebRTC.Interop
 
         #region Helpers
 
-        public static ExternalVideoTrackSource AddLocalVideoTrackFromExternalI420Source(PeerConnection peer, IntPtr peerHandle,
+        public static LocalVideoTrack AddLocalVideoTrackFromExternalI420Source(PeerConnection peer, IntPtr peerHandle,
             string trackName, I420VideoFrameRequestDelegate frameRequestCallback)
         {
             // Create some static callback args which keep the sourceDelegate alive
@@ -616,9 +617,12 @@ namespace Microsoft.MixedReality.WebRTC.Interop
 
             // Add the local track based on the static interop trampoline callback
             uint res = PeerConnection_AddLocalVideoTrackFromExternalI420Source(peerHandle, trackName,
-                RequestI420VideoFrameFromExternalSourceCallback, GCHandle.ToIntPtr(argsHandle), out IntPtr sourceHandle);
+                RequestI420VideoFrameFromExternalSourceCallback, GCHandle.ToIntPtr(argsHandle),
+                out IntPtr sourceHandle, out IntPtr trackHandle);
             Utils.ThrowOnErrorCode(res);
-            return new ExternalVideoTrackSource(peer, peerHandle, sourceHandle, argsHandle);
+            var source = new ExternalVideoTrackSource(peer, peerHandle, sourceHandle, argsHandle);
+            var track = new LocalVideoTrack(source, peer, peerHandle, trackHandle, trackName);
+            return track;
         }
 
         #endregion

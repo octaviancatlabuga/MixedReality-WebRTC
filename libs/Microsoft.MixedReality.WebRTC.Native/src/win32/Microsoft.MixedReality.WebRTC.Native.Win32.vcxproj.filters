@@ -12,9 +12,6 @@
     <ClCompile Include="../data_channel.cpp">
       <Filter>media</Filter>
     </ClCompile>
-    <ClCompile Include="../media/mf_video_track_source.cpp">
-      <Filter>media</Filter>
-    </ClCompile>
     <ClCompile Include="../media/external_video_track_source.cpp">
       <Filter>media</Filter>
     </ClCompile>
@@ -35,9 +32,6 @@
       <Filter>interop</Filter>
     </ClInclude>
     <ClInclude Include="../data_channel.h">
-      <Filter>media</Filter>
-    </ClInclude>
-    <ClInclude Include="../media/mf_video_track_source.h">
       <Filter>media</Filter>
     </ClInclude>
     <ClInclude Include="../media/external_video_track_source.h">

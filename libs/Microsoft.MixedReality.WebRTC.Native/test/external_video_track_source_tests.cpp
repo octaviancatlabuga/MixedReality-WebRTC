@@ -114,11 +114,12 @@ TEST(ExternalVideoTrackSource, Simple) {
   LocalPeerPairRaii pair;
 
   ExternalVideoTrackSourceHandle source_handle = nullptr;
+  LocalVideoTrackHandle track_handle = nullptr;
   ASSERT_EQ(MRS_SUCCESS,
             mrsPeerConnectionAddLocalVideoTrackFromExternalArgb32Source(
                 pair.pc1(), "gen_track", &GenerateQuadTestFrame, nullptr,
-                &source_handle));
-  ASSERT_NE(0, mrsPeerConnectionIsLocalVideoTrackEnabled(pair.pc1()));
+                &source_handle, &track_handle));
+  ASSERT_NE(mrsBool::kFalse, mrsLocalVideoTrackIsEnabled(track_handle));
   ASSERT_NE(nullptr, source_handle);
 
   uint32_t frame_count = 0;

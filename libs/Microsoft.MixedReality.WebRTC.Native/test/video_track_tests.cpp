@@ -28,9 +28,11 @@ TEST(VideoTrack, Simple) {
   LocalPeerPairRaii pair;
 
   VideoDeviceConfiguration config{};
+  LocalVideoTrackHandle track_handle = nullptr;
   ASSERT_EQ(MRS_SUCCESS,
-            mrsPeerConnectionAddLocalVideoTrack(pair.pc1(), config));
-  ASSERT_NE(0, mrsPeerConnectionIsLocalVideoTrackEnabled(pair.pc1()));
+            mrsPeerConnectionAddLocalVideoTrack(pair.pc1(), "local_video_track",
+                                                config, &track_handle));
+  ASSERT_NE(mrsBool::kFalse, mrsLocalVideoTrackIsEnabled(pair.pc1()));
 
   uint32_t frame_count = 0;
   I420VideoFrameCallback i420cb =
@@ -62,13 +64,18 @@ TEST(VideoTrack, Muted) {
   LocalPeerPairRaii pair;
 
   VideoDeviceConfiguration config{};
+  LocalVideoTrackHandle track_handle = nullptr;
   ASSERT_EQ(MRS_SUCCESS,
-            mrsPeerConnectionAddLocalVideoTrack(pair.pc1(), config));
+            mrsPeerConnectionAddLocalVideoTrack(pair.pc1(), "local_video_track",
+                                                config, &track_handle));
+
+  // New tracks are enabled by default
+  ASSERT_NE(mrsBool::kFalse, mrsLocalVideoTrackIsEnabled(pair.pc1()));
 
   // Disable the video track; it should output only black frames
   ASSERT_EQ(MRS_SUCCESS,
-            mrsPeerConnectionSetLocalVideoTrackEnabled(pair.pc1(), false));
-  ASSERT_EQ(0, mrsPeerConnectionIsLocalVideoTrackEnabled(pair.pc1()));
+            mrsLocalVideoTrackSetEnabled(pair.pc1(), mrsBool::kFalse));
+  ASSERT_EQ(mrsBool::kFalse, mrsLocalVideoTrackIsEnabled(pair.pc1()));
 
   uint32_t frame_count = 0;
   I420VideoFrameCallback i420cb =
