@@ -551,7 +551,7 @@ namespace Microsoft.MixedReality.WebRTC.Interop
 
         [DllImport(Utils.dllPath, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi,
             EntryPoint = "mrsPeerConnectionRemoveLocalVideoTrack")]
-        public static extern void PeerConnection_RemoveLocalVideoTrack(IntPtr peerHandle);
+        public static extern uint PeerConnection_RemoveLocalVideoTrack(IntPtr peerHandle, IntPtr trackHandle);
 
         [DllImport(Utils.dllPath, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi,
             EntryPoint = "mrsPeerConnectionRemoveLocalAudioTrack")]

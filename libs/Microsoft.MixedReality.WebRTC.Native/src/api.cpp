@@ -8,6 +8,7 @@
 
 #include "api.h"
 #include "data_channel.h"
+#include "local_video_track.h"
 #include "media/external_video_track_source.h"
 #include "peer_connection.h"
 #include "sdp_utils.h"
@@ -885,23 +886,21 @@ void MRS_CALL mrsPeerConnectionRegisterDataChannelRemovedCallback(
   }
 }
 
-void MRS_CALL mrsPeerConnectionRegisterI420LocalVideoFrameCallback(
-    PeerConnectionHandle peerHandle,
+void MRS_CALL mrsLocalVideoTrackRegisterI420FrameCallback(
+    LocalVideoTrackHandle trackHandle,
     PeerConnectionI420VideoFrameCallback callback,
     void* user_data) noexcept {
-  if (auto peer = static_cast<PeerConnection*>(peerHandle)) {
-    peer->RegisterLocalVideoFrameCallback(
-        I420FrameReadyCallback{callback, user_data});
+  if (auto track = static_cast<LocalVideoTrack*>(trackHandle)) {
+    track->SetCallback(I420FrameReadyCallback{callback, user_data});
   }
 }
 
-void MRS_CALL mrsPeerConnectionRegisterARGBLocalVideoFrameCallback(
-    PeerConnectionHandle peerHandle,
+void MRS_CALL mrsLocalVideoTrackRegisterARGBFrameCallback(
+    LocalVideoTrackHandle trackHandle,
     PeerConnectionARGBVideoFrameCallback callback,
     void* user_data) noexcept {
-  if (auto peer = static_cast<PeerConnection*>(peerHandle)) {
-    peer->RegisterLocalVideoFrameCallback(
-        ARGBFrameReadyCallback{callback, user_data});
+  if (auto track = static_cast<LocalVideoTrack*>(trackHandle)) {
+    track->SetCallback(ARGBFrameReadyCallback{callback, user_data});
   }
 }
 
@@ -945,9 +944,15 @@ MRS_API void MRS_CALL mrsPeerConnectionRegisterRemoteAudioFrameCallback(
   }
 }
 
-mrsResult MRS_CALL
-mrsPeerConnectionAddLocalVideoTrack(PeerConnectionHandle peerHandle,
-                                    VideoDeviceConfiguration config) noexcept {
+mrsResult MRS_CALL mrsPeerConnectionAddLocalVideoTrack(
+    PeerConnectionHandle peerHandle,
+    VideoDeviceConfiguration config,
+    LocalVideoTrackHandle* trackHandle) noexcept {
+  if (!trackHandle) {
+    return MRS_E_INVALID_PARAMETER;
+  }
+  *trackHandle = nullptr;
+
   auto peer = static_cast<PeerConnection*>(peerHandle);
   if (!peer) {
     return MRS_E_INVALID_PEER_HANDLE;
@@ -997,7 +1002,9 @@ mrsPeerConnectionAddLocalVideoTrack(PeerConnectionHandle peerHandle,
   if (!video_track) {
     return MRS_E_UNKNOWN;
   }
-  if (peer->AddLocalVideoTrack(std::move(video_track))) {
+  auto result = peer->AddLocalVideoTrack(std::move(video_track));
+  if (result.ok()) {
+    *trackHandle = result.value().get();
     return MRS_SUCCESS;
   }
   return MRS_E_UNKNOWN;
@@ -1038,11 +1045,15 @@ mrsResult MRS_CALL mrsPeerConnectionAddLocalVideoTrackFromExternalI420Source(
   if (!video_track) {
     return MRS_E_UNKNOWN;
   }
-  if (peer->AddLocalVideoTrack(std::move(video_track))) {
+  auto result = peer->AddLocalVideoTrack(std::move(video_track));
+  if (result.ok()) {
     *handle = video_source.get();
+    //*trackHandle = result.value().get(); //< TODO
     return MRS_SUCCESS;
   }
-  return MRS_E_UNKNOWN;
+  RTC_LOG(LS_ERROR) << "Failed to add local video track: "
+                    << result.error().message();
+  return MRS_E_UNKNOWN;  //< TODO Convert from result.error()?
 }
 
 mrsResult MRS_CALL mrsPeerConnectionAddLocalVideoTrackFromExternalArgb32Source(
@@ -1080,11 +1091,15 @@ mrsResult MRS_CALL mrsPeerConnectionAddLocalVideoTrackFromExternalArgb32Source(
   if (!video_track) {
     return MRS_E_UNKNOWN;
   }
-  if (peer->AddLocalVideoTrack(std::move(video_track))) {
+  auto result = peer->AddLocalVideoTrack(std::move(video_track));
+  if (result.ok()) {
     *handle = video_source.get();
+    //*trackHandle = result.value().get(); //< TODO
     return MRS_SUCCESS;
   }
-  return MRS_E_UNKNOWN;
+  RTC_LOG(LS_ERROR) << "Failed to add local video track: "
+                    << result.error().message();
+  return MRS_E_UNKNOWN;  //< TODO Convert from result.error()?
 }
 
 MRS_API mrsResult MRS_CALL mrsPeerConnectionRemoveLocalVideoTracks(
@@ -1189,11 +1204,19 @@ mrsResult MRS_CALL mrsPeerConnectionAddDataChannel(
   return RTCToAPIError(data_channel.error());
 }
 
-void MRS_CALL mrsPeerConnectionRemoveLocalVideoTrack(
-    PeerConnectionHandle peerHandle) noexcept {
-  if (auto peer = static_cast<PeerConnection*>(peerHandle)) {
-    peer->RemoveLocalVideoTrack();
+mrsResult MRS_CALL mrsPeerConnectionRemoveLocalVideoTrack(
+    PeerConnectionHandle peerHandle,
+    LocalVideoTrackHandle trackHandle) noexcept {
+  auto peer = static_cast<PeerConnection*>(peerHandle);
+  if (!peer) {
+    return MRS_E_INVALID_PEER_HANDLE;
   }
+  auto track = static_cast<LocalVideoTrackHandle*>(trackHandle);
+  if (!track) {
+    return MRS_E_INVALID_PARAMETER;
+  }
+  peer->RemoveLocalVideoTrack(*track);
+  return MRS_SUCCESS;
 }
 
 void MRS_CALL mrsPeerConnectionRemoveLocalAudioTrack(

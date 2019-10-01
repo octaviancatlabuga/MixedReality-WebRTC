@@ -133,6 +133,7 @@
     <ClInclude Include="../../include/str.h" />
     <ClInclude Include="../media/mf_video_track_source.h" />
     <ClInclude Include="../media/external_video_track_source.h" />
+    <ClInclude Include="../../include/local_video_track.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="../api.cpp" />
@@ -148,6 +149,7 @@
     <ClCompile Include="../str.cpp" />
     <ClCompile Include="../media/mf_video_track_source.cpp" />
     <ClCompile Include="../media/external_video_track_source.cpp" />
+    <ClCompile Include="../local_video_track.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="../../docs/design.md" />

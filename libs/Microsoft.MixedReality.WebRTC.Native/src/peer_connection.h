@@ -13,6 +13,7 @@ namespace Microsoft::MixedReality::WebRTC {
 
 class PeerConnection;
 class DataChannel;
+class LocalVideoTrack;
 class ExternalVideoTrackSource;
 
 /// The PeerConnection class is the entry point to most of WebRTC.
@@ -176,24 +177,6 @@ class PeerConnection : public webrtc::PeerConnectionObserver,
   // Video
   //
 
-  /// Register a custom callback invoked when a local video frame is ready to be
-  /// displayed.
-  void RegisterLocalVideoFrameCallback(
-      I420FrameReadyCallback callback) noexcept {
-    if (local_video_observer_) {
-      local_video_observer_->SetCallback(std::move(callback));
-    }
-  }
-
-  /// Register a custom callback invoked when a local video frame is ready to be
-  /// displayed.
-  void RegisterLocalVideoFrameCallback(
-      ARGBFrameReadyCallback callback) noexcept {
-    if (local_video_observer_) {
-      local_video_observer_->SetCallback(std::move(callback));
-    }
-  }
-
   /// Register a custom callback invoked when a remote video frame has been
   /// received and decompressed, and is ready to be displayed locally.
   void RegisterRemoteVideoFrameCallback(
@@ -212,33 +195,17 @@ class PeerConnection : public webrtc::PeerConnectionObserver,
     }
   }
 
-  /// Add to the peer connection an audio track backed by a local audio capture
-  /// device.
-  /// Note: currently a single local video track is supported per peer
-  /// connection.
-  bool AddLocalVideoTrack(
+  /// Add a video track to the peer connection.
+  webrtc::RTCErrorOr<std::shared_ptr<LocalVideoTrack>> AddLocalVideoTrack(
       rtc::scoped_refptr<webrtc::VideoTrackInterface> video_track) noexcept;
 
-  /// Remove the existing local video track from the peer connection.
-  /// Note: currently a single local video track is supported per peer
-  /// connection.
-  void RemoveLocalVideoTrack() noexcept;
+  /// Remove a local video track from the peer connection.
+  webrtc::RTCError RemoveLocalVideoTrack(LocalVideoTrack& video_track) noexcept;
 
   /// Remove all tracks sharing the given video track source.
   /// Note that currently video source sharing is not supported, so this will
   /// remove at most a single track backed by the given source.
   void RemoveLocalVideoTracks(ExternalVideoTrackSource& source) noexcept;
-
-  /// Enable or disable the local video track. Disable video tracks are still
-  /// active but output black frames.
-  /// Note: currently a single local video track is supported per peer
-  /// connection.
-  void SetLocalVideoTrackEnabled(bool enabled = true) noexcept;
-
-  /// Check if the local video frame is enabled.
-  /// Note: currently a single local video track is supported per peer
-  /// connection.
-  bool IsLocalVideoTrackEnabled() const noexcept;
 
   //
   // Audio
@@ -476,11 +443,16 @@ class PeerConnection : public webrtc::PeerConnectionObserver,
   std::mutex track_added_callback_mutex_;
   std::mutex track_removed_callback_mutex_;
 
-  rtc::scoped_refptr<webrtc::VideoTrackInterface> local_video_track_;
   rtc::scoped_refptr<webrtc::AudioTrackInterface> local_audio_track_;
-  rtc::scoped_refptr<webrtc::RtpSenderInterface> local_video_sender_;
   rtc::scoped_refptr<webrtc::RtpSenderInterface> local_audio_sender_;
   std::vector<rtc::scoped_refptr<webrtc::MediaStreamInterface>> remote_streams_;
+
+  /// Collection of all local video tracks associated with this peer connection.
+  std::vector<std::shared_ptr<LocalVideoTrack>> local_video_tracks_
+      RTC_GUARDED_BY(tracks_mutex_);
+
+  /// Mutex for all collections of all tracks.
+  rtc::CriticalSection tracks_mutex_;
 
   /// Collection of all data channels associated with this peer connection.
   std::vector<std::shared_ptr<DataChannel>> data_channels_;
@@ -498,7 +470,6 @@ class PeerConnection : public webrtc::PeerConnectionObserver,
   //< TODO - Clarify lifetime of those, for now same as this PeerConnection
   std::unique_ptr<AudioFrameObserver> local_audio_observer_;
   std::unique_ptr<AudioFrameObserver> remote_audio_observer_;
-  std::unique_ptr<VideoFrameObserver> local_video_observer_;
   std::unique_ptr<VideoFrameObserver> remote_video_observer_;
 
   /// Flag to indicate if SCTP was negotiated during the initial SDP handshake

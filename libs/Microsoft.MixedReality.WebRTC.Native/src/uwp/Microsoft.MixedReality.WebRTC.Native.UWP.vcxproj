@@ -122,6 +122,10 @@
     <ClInclude Include="../sdp_utils.h" />
     <ClInclude Include="../../include/export.h" />
     <ClInclude Include="../../include/str.h" />
+    <ClInclude Include="../../include/local_video_track.h" />
+    <ClInclude Include="../media/external_video_track_source.h" />
+    <ClInclude Include="../media/mf_video_capture_module.h" />
+    <ClInclude Include="../media/mf_video_track_source.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="../api.cpp" />
@@ -134,6 +138,10 @@
     <ClCompile Include="../video_frame_observer.cpp" />
     <ClCompile Include="../sdp_utils.cpp" />
     <ClCompile Include="../str.cpp" />
+    <ClCompile Include="../local_video_track.cpp" />
+    <ClCompile Include="../media/external_video_track_source.cpp" />
+    <ClCompile Include="../media/mf_video_capture_module.cpp" />
+    <ClCompile Include="../media/mf_video_track_source.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="../../docs/design.md" />

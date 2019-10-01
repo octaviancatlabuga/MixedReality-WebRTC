@@ -13,6 +13,18 @@
       <Filter>media</Filter>
     </ClCompile>
     <ClCompile Include="../str.cpp" />
+    <ClCompile Include="../local_video_track.cpp">
+      <Filter>media</Filter>
+    </ClCompile>
+    <ClCompile Include="../media/external_video_track_source.cpp">
+      <Filter>media</Filter>
+    </ClCompile>
+    <ClCompile Include="../media/mf_video_capture_module.cpp">
+      <Filter>media</Filter>
+    </ClCompile>
+    <ClCompile Include="../media/mf_video_track_source.cpp">
+      <Filter>media</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="../audio_frame_observer.h" />
@@ -30,6 +42,18 @@
     </ClInclude>
     <ClInclude Include="../../include/str.h" />
     <ClInclude Include="../../include/export.h" />
+    <ClInclude Include="../media/external_video_track_source.h">
+      <Filter>media</Filter>
+    </ClInclude>
+    <ClInclude Include="../media/mf_video_capture_module.h">
+      <Filter>media</Filter>
+    </ClInclude>
+    <ClInclude Include="../media/mf_video_track_source.h">
+      <Filter>media</Filter>
+    </ClInclude>
+    <ClInclude Include="../../include/local_video_track.h">
+      <Filter>media</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="../../docs/design.md" />

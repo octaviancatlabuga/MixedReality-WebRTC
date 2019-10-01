@@ -61,6 +61,9 @@ struct mrsDataChannelCallbacks;
 /// Opaque handle to the interop wrapper of a peer connection.
 using mrsPeerConnectionInteropHandle = void*;
 
+/// Opaque handle to the interop wrapper of a local video track.
+using mrsLocalVideoTrackInteropHandle = void*;
+
 /// Opaque handle to the interop wrapper of a data channel.
 using mrsDataChannelInteropHandle = void*;
 
@@ -125,6 +128,9 @@ using PeerConnectionHandle = void*;
 
 /// Opaque handle to a native DataChannel C++ object.
 using DataChannelHandle = void*;
+
+/// Opaque handle to a native LocalVideoTrack C++ object.
+using LocalVideoTrackHandle = void*;
 
 /// Opaque handle to a native ExternalVideoTrackSource C++ object.
 using ExternalVideoTrackSourceHandle = void*;
@@ -620,8 +626,8 @@ MRS_API mrsResult MRS_CALL mrsPeerConnectionAddDataChannel(
     mrsDataChannelCallbacks callbacks,
     DataChannelHandle* dataChannelHandleOut) noexcept;
 
-MRS_API void MRS_CALL mrsPeerConnectionRemoveLocalVideoTrack(
-    PeerConnectionHandle peerHandle) noexcept;
+MRS_API mrsResult MRS_CALL mrsPeerConnectionRemoveLocalVideoTrack(
+    PeerConnectionHandle peerHandle, LocalVideoTrackHandle trackHandle) noexcept;
 
 MRS_API void MRS_CALL mrsPeerConnectionRemoveLocalAudioTrack(
     PeerConnectionHandle peerHandle) noexcept;

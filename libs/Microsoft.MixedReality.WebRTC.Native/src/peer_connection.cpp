@@ -9,6 +9,7 @@
 #include "api.h"
 #include "audio_frame_observer.h"
 #include "data_channel.h"
+#include "local_video_track.h"
 #include "peer_connection.h"
 #include "video_frame_observer.h"
 
@@ -97,7 +98,6 @@ rtc::scoped_refptr<PeerConnection> PeerConnection::create(
 
   // Acquire ownership of the underlying implementation
   peer->peer_ = std::move(impl);
-  peer->local_video_observer_.reset(new VideoFrameObserver());
   peer->remote_video_observer_.reset(new VideoFrameObserver());
   peer->local_audio_observer_.reset(new AudioFrameObserver());
   peer->remote_audio_observer_.reset(new AudioFrameObserver());
@@ -113,7 +113,8 @@ PeerConnection::~PeerConnection() noexcept {
 
   // Ensure that observers (sinks) are removed, otherwise the media pipelines
   // will continue to try to feed them with data after they're destroyed
-  RemoveLocalVideoTrack();
+  // RemoveLocalVideoTrack(); TODO - do we need to keep a list of local tracks
+  // and do something here?
   RemoveLocalAudioTrack();
   for (auto stream : remote_streams_) {
     if (auto* sink = remote_video_observer_.get()) {
@@ -134,42 +135,42 @@ PeerConnection::~PeerConnection() noexcept {
   }
 }
 
-bool PeerConnection::AddLocalVideoTrack(
+webrtc::RTCErrorOr<std::shared_ptr<LocalVideoTrack>>
+PeerConnection::AddLocalVideoTrack(
     rtc::scoped_refptr<webrtc::VideoTrackInterface> video_track) noexcept {
-  if (local_video_track_) {
-    return false;
-  }
   auto result = peer_->AddTrack(video_track, {kAudioVideoStreamId});
   if (result.ok()) {
-    if (local_video_observer_) {
-      rtc::VideoSinkWants sink_settings{};
-      sink_settings.rotation_applied = true;
-      video_track->AddOrUpdateSink(local_video_observer_.get(), sink_settings);
+    auto track = std::make_shared<LocalVideoTrack>(
+        *this, std::move(video_track), std::move(result.MoveValue()), nullptr);
+    {
+      rtc::CritScope lock(&tracks_mutex_);
+      local_video_tracks_.push_back(track);
     }
-    local_video_sender_ = result.value();
-    local_video_track_ = std::move(video_track);
-    return true;
+    return track;
   }
-  return false;
+  return result.MoveError();
 }
 
-void PeerConnection::RemoveLocalVideoTrack() noexcept {
-  if (!local_video_track_)
-    return;
-  if (auto* sink = local_video_observer_.get()) {
-    local_video_track_->RemoveSink(sink);
+webrtc::RTCError PeerConnection::RemoveLocalVideoTrack(
+    LocalVideoTrack& video_track) noexcept {
+  rtc::CritScope lock(&tracks_mutex_);
+  auto it = std::find_if(
+      local_video_tracks_.begin(), local_video_tracks_.end(),
+      [&video_track](const std::shared_ptr<LocalVideoTrack>& track) {
+        return track.get() == &video_track;
+      });
+  if (it == local_video_tracks_.end()) {
+    return webrtc::RTCError(
+        webrtc::RTCErrorType::INVALID_PARAMETER,
+        "The video track is not associated with the peer connection.");
   }
-  peer_->RemoveTrack(local_video_sender_);
-  local_video_track_ = nullptr;
-  local_video_sender_ = nullptr;
+  video_track.RemoveFromPeerConnection(*peer_);
+  local_video_tracks_.erase(it);
+  return webrtc::RTCError::OK();
 }
 
 void PeerConnection::RemoveLocalVideoTracks(
     ExternalVideoTrackSource& source) noexcept {
-  // if (auto* sink = local_video_observer_.get()) {
-  //  local_video_track_->RemoveSink(sink);
-  //}
-
   // Remove all tracks which share this video track source.
   // Currently there is no support for source sharing, so this should
   // amount to a single track.
@@ -179,7 +180,7 @@ void PeerConnection::RemoveLocalVideoTracks(
     rtc::scoped_refptr<webrtc::MediaStreamTrackInterface> track =
         sender->track();
     // Apparently track can be null if destroyed already
-	//< FIXME - Is this an error?
+    //< FIXME - Is this an error?
     if (!track ||
         (track->kind() != webrtc::MediaStreamTrackInterface::kVideoKind)) {
       continue;
@@ -190,19 +191,6 @@ void PeerConnection::RemoveLocalVideoTracks(
       peer_->RemoveTrack(sender);
     }
   }
-}
-
-void PeerConnection::SetLocalVideoTrackEnabled(bool enabled) noexcept {
-  if (local_video_track_) {
-    local_video_track_->set_enabled(enabled);
-  }
-}
-
-bool PeerConnection::IsLocalVideoTrackEnabled() const noexcept {
-  if (local_video_track_) {
-    return local_video_track_->enabled();
-  }
-  return false;
 }
 
 void PeerConnection::SetLocalAudioTrackEnabled(bool enabled) noexcept {

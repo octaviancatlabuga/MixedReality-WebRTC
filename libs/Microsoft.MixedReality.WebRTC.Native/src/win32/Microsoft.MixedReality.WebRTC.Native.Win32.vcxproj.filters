@@ -19,6 +19,9 @@
       <Filter>media</Filter>
     </ClCompile>
     <ClCompile Include="../str.cpp" />
+    <ClCompile Include="../local_video_track.cpp">
+      <Filter>media</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="../audio_frame_observer.h" />
@@ -42,6 +45,9 @@
     </ClInclude>
     <ClInclude Include="../../include/str.h" />
     <ClInclude Include="../../include/export.h" />
+    <ClInclude Include="../../include/local_video_track.h">
+      <Filter>media</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="../../docs/design.md" />
