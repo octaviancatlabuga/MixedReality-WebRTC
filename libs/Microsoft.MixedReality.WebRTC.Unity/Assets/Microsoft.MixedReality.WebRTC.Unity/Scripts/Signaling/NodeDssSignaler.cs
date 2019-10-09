@@ -64,6 +64,8 @@ namespace Microsoft.MixedReality.WebRTC.Unity
         /// </summary>
         private ConcurrentQueue<Action> _mainThreadWorkQueue = new ConcurrentQueue<Action>();
 
+        // ------OC------
+        public bool continuousGet = false;
 
         #region ISignaler interface
 
@@ -80,6 +82,7 @@ namespace Microsoft.MixedReality.WebRTC.Unity
         }
 
         #endregion
+
 
 
         /// <summary>
@@ -291,10 +294,14 @@ namespace Microsoft.MixedReality.WebRTC.Unity
 
             // when we have reached our PollTimeMs value...
             timeSincePollMs = 0f;
+			
+			if (continuousGet)
+            {
+                StartCoroutine(CO_GetAndProcessFromServer());     // Start this thing when pressing call
 
-            // begin the poll and process.
-            lastGetComplete = false;
-            StartCoroutine(CO_GetAndProcessFromServer());
+                // begin the poll and process.
+                lastGetComplete = false;
+            }
         }
     }
 }
